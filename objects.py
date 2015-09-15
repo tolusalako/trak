@@ -1,36 +1,10 @@
 
 class object:
-	length = 0
-	width = 0
-	parent = None
-	location = tuple()
-	img_file = ''
-	image = None
 
-	def __init__(self, img_file):
-		pass
+	def __init__(self, name, top_left, size):
+		self.top_left = top_left
+		self.size = size
+		self.name = name
 
-
-
-class mobileObjects(object):
-	speed = 0
-	angle = 0
-
-	def slow(x = 1):
-		self.speed -= x
-
-	def accelerate(x = 1):
-		self.speed += x
-
-	def stop():
-		self.speed = 0
-
-	def setSpeed(x):
-		self.speed = x
-
-	def setAngle(x):
-		self.angle = x
-
-	def __init__(self, img_file):
-		object.__init__(self, img_file)
-		pass
+	def __repr__(self):
+		print name + 'TL: {}, W: {}, H: {}'.format(self.top_left, self.size[0], self.size[1]) 

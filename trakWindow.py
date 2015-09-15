@@ -1,12 +1,12 @@
 import win32gui, win32ui, win32con, win32api, win32console
 import cv2
-import time
+import time, sys
 from PIL import Image
 from os import listdir
 from scipy import where, asarray
 from objects import object
 
-class WindowHandler():
+class Trak():
 	def take_screenshot(self):
  		windowSize = win32gui.GetWindowRect(self.window)
  		hwin = win32gui.GetDesktopWindow()
@@ -28,7 +28,7 @@ class WindowHandler():
 		win32gui.ReleaseDC(self.window, hwindc) 
 		return img
 
-	def find_objects(img): #Multiple objects fix
+	def find_objects(self, img): #Multiple objects fix
 		img_rgb = asarray(img)
 		img_gray = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2GRAY)
 		objects = [f for f in listdir(self.objects_path)]
@@ -42,11 +42,11 @@ class WindowHandler():
 
 			res = cv2.matchTemplate(img_gray,template,cv2.TM_CCOEFF_NORMED)
 
-			threshold = .5
+			threshold = .3
 			loc = where( res >= threshold)
-			# for pt in zip(*loc[::-1]): #pt is the topleft corner
-			# 	cv2.rectangle(img_copy, pt, (pt[0] + w, pt[1] + h), (0,0,255), 2)
-			#cv2.imwrite(obj,img_copy)
+			for pt in zip(*loc[::-1]): #pt is the topleft corner
+			 	cv2.rectangle(img_copy, pt, (pt[0] + w, pt[1] + h), (0,0,255), 2)
+			cv2.imwrite('output/' + obj,img_copy)
 			
 			found_objects.add(object(obj, loc[0], (w,h))) #Can use the first loc value or the avg of them. It is usually accurate
 		return found_objects
@@ -74,4 +74,18 @@ class WindowHandler():
 			self.window = win_list[0]
 		else:
 			print ('Error: Multiple windows found.' if win_count > 1 else 'Error: Window not found.')
+
+
+if __name__ == '__main__':
+	source = ''
+	window_names = []
+	obj = 'objects/'
+	try:
+		source = sys.argv[1]
+		window_names = sys.argv[2:]
+	except:
+		print 'Usage: trakWindow.py source options'
+		sys.exit(0)
 	
+	trak = Trak(window_names, obj)
+	trak.find_objects(trak.take_screenshot())
