@@ -4,14 +4,12 @@ import threading, time
 class Thread(threading.Thread):
 	def __init__(self):
 		threading.Thread.__init__(self)
-		self._stop = False
 
    	def run(self, function, args, delay):
-		while(not self._stop):
+		while(True):
 			result = function(args)
 			if result != None:
 				return result
 			time.sleep(delay)
 
-	def stop(self):
-		self._stop = True
+	def run_bool(cond)
