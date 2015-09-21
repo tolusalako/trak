@@ -1,0 +1,15 @@
+.DAYS
+MON
+TUE
+WED
+.FROM
+1
+30
+PM
+.TO
+5
+50
+PM
+.EVERY
+1
+HR

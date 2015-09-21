@@ -33,7 +33,7 @@ class MainWindow(TK.Frame):
 		self.preview_var = TK.IntVar()
 		self.checkbutton_preview = TK.Checkbutton(master = self.labelframe_source, variable = self.preview_var, command = self.preview_input)
 		self.checkbutton_preview.grid(row = 1, column = 2)
-		self.preview_var.set(1)
+		self.preview_var.set(0)
 
 		self.labelframe_preview = TK.LabelFrame(master = self.labelframe_source, text = 'Preview')
 		self.labelframe_preview.grid(row = 2, columnspan = 3)
@@ -110,11 +110,40 @@ class MainWindow(TK.Frame):
 
 
 	def setup(self):
-		#LOAD DEFAULT SOURCES (CAMS)
-		self.source = trak.TrakCam(self.objects_path)
+		#LOAD Data
+		self.data = trakData.TrakData(data + 'options.txt')
+		source = self.data.get('SOURCE')[0]
+		preview = self.data.get('PREVIEW')[0]
+		to = self.data.get('TO')
+		from_ = self.data.get('FROM')
+		every = self.data.get('EVERY')
+		days = ['MON', 'TUE', 'WED', 'THURS', 'FRI', 'SAT', 'SUN']
+		[self.repeat_var[d].set(int(self.data.get(days[d])[0])) for d in range(len(days))]
+
+		#SET options
+		if source == 'CAM':
+			self.source = trak.TrakCam(self.objects_path)
+		else:
+			self.source = trak.TrakWindow(self.objects_path)	
 		self.optionmenu_sources = apply(TK.OptionMenu, (self.labelframe_source, self.list_var) + tuple(self.source.source_list[1]))
 		self.optionmenu_sources.grid(row = 1, column = 0, columnspan = 2, sticky = TK.W)
-		self.preview_input()
+		
+		if preview == '1':
+			self.preview_var.set(1)
+			self.preview_input()
+
+		self.spinbox_to_hr['textvariable'] = TK.StringVar(self).set(to[0])
+		self.spinbox_to_min['textvariable'] = TK.StringVar(self).set(to[1])
+		self.button_to['text'] = to[2]
+
+		self.spinbox_from_hr['textvariable'] = TK.StringVar(self).set(from_[0])
+		self.spinbox_from_min['textvariable'] = TK.StringVar(self).set(from_[1])
+		self.button_from['text'] = from_[2]
+
+		self.spinbox_interval['textvariable'] = TK.StringVar(self).set(every[0])
+		self.button_interval['text'] = every[1] 
+
+		self.update_object_list(None)
 
 	def show(self):
 		self.mainloop()
@@ -185,5 +214,7 @@ class MainWindow(TK.Frame):
 
 
 if __name__ == '__main__':
+	data = 'data\\'
 	main = MainWindow('objects/')
 	main.show()
+
