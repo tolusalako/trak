@@ -1,23 +1,21 @@
 #GUI
 import Tkinter as TK
 from PIL import ImageTk, Image
-
+from os import listdir
 import trak, trakData
 
 
 class MainWindow(TK.Frame):
 	STICKY_ALL = TK.N + TK.S + TK.W + TK.E
 
-	def __init__(self, master = None):
-		TK.Frame.__init__(self, master)
-		OPTIONS = ['None']
+	def __init__(self, objects_path):
+		self.master = TK.Tk()
+		TK.Frame.__init__(self, self.master)
+		self.master.protocol('WM_DELETE_WINDOW', self.__on_exit)
+
+		self.objects_path = objects_path
 		self.preview_width = 300
 		self.preview_height = 200
-
-		#LOAD DEFAULT SOURCES (CAMS)
-		self.source = trak.TrakCam('objects/')
-		OPTIONS = ['Camera {}'.format(i) for i in range(self.source.source_count)]
-
 
 		#SOURCE
 		self.labelframe_source = TK.LabelFrame(master = self, text = 'Source')
@@ -31,13 +29,10 @@ class MainWindow(TK.Frame):
 		self.radiobutton_window.grid(row = 0, column = 1,sticky = TK.W)
 
 		self.list_var = TK.StringVar(self)
-		self.list_var.set(OPTIONS[0])
-		self.optionmenu_sources = apply(TK.OptionMenu, (self.labelframe_source, self.list_var) + tuple(OPTIONS))
-		self.optionmenu_sources.grid(row = 1, column = 0, columnspan = 2, sticky = TK.W)
 
 		self.preview_var = TK.IntVar()
-		self.checkbutton_preview = TK.Checkbutton(master = self.labelframe_source, variable = self.preview_var, command = self.preview)
-		self.checkbutton_preview.grid(row = 1, column = 1)
+		self.checkbutton_preview = TK.Checkbutton(master = self.labelframe_source, variable = self.preview_var, command = self.preview_input)
+		self.checkbutton_preview.grid(row = 1, column = 2)
 		self.preview_var.set(1)
 
 		self.labelframe_preview = TK.LabelFrame(master = self.labelframe_source, text = 'Preview')
@@ -46,9 +41,13 @@ class MainWindow(TK.Frame):
 		self.canvas_preview = TK.Canvas(master = self.labelframe_preview, background = "#FFFFFF", height = self.preview_height, width = self.preview_width)
 		self.canvas_preview.grid(row = 0, columnspan = 3, sticky = TK.W)
 
+
+		self.frame_righthalf = TK.Frame(master = self)
+		self.frame_righthalf.grid(row = 0, column = 1, sticky = TK.E)
+
 		#TIMER
-		self.labelframe_timer = TK.LabelFrame(master = self, text = 'Timer')
-		self.labelframe_timer.grid(row = 0, column = 1, sticky = TK.E)
+		self.labelframe_timer = TK.LabelFrame(master = self.frame_righthalf, text = 'Timer')
+		self.labelframe_timer.grid(row = 1, sticky = TK.E)
 
 		self.repeat_var = [TK.IntVar() for i in range(7)]
 		self.checkbutton_repeat_Mon = TK.Checkbutton(master = self.labelframe_timer, text = 'Mon', variable = self.repeat_var[0])
@@ -94,14 +93,28 @@ class MainWindow(TK.Frame):
 		self.button_interval.grid(row = 3, column = 3)
 		self.button_interval.bind('<ButtonRelease-1>', lambda event: self.min_to_hr_swap(event))
 
-		#INPUT
-		# self.labelframe_input = TK.LabelFrame(master = self, text = 'Input')
-		# self.labelframe_input.grid(row = 1, column = 2)
-		# self.button_browse_input = TK.Button(master = self.labelframe_input, text = 'Browse')
-		# self.button_browse_input.grid()
+		#OBJECTS
+		self.labelframe_objects = TK.LabelFrame(master = self.frame_righthalf, text = 'Input')
+		self.labelframe_objects.grid(row = 0, sticky = TK.W)
+		
+		self.listbox_objects = TK.Listbox(master = self.labelframe_objects, selectmode = TK.SINGLE)
+		self.listbox_objects.grid(row = 0)
+		self.listbox_objects.bind('<Enter>', self.update_object_list)
+		self.listbox_objects.bind('<ButtonRelease-1>', self.preview_object)
 
-		self.preview()
+		self.canvas_preview_object = TK.Canvas(master = self.labelframe_objects, background = "#FFFFFF", height = 100, width = 100)
+		self.canvas_preview_object.grid(row = 0, column = 1, sticky = TK.E)
+
+		self.setup()
 		self.pack()
+
+
+	def setup(self):
+		#LOAD DEFAULT SOURCES (CAMS)
+		self.source = trak.TrakCam(self.objects_path)
+		self.optionmenu_sources = apply(TK.OptionMenu, (self.labelframe_source, self.list_var) + tuple(self.source.source_list[1]))
+		self.optionmenu_sources.grid(row = 1, column = 0, columnspan = 2, sticky = TK.W)
+		self.preview_input()
 
 	def show(self):
 		self.mainloop()
@@ -112,32 +125,65 @@ class MainWindow(TK.Frame):
 	def min_to_hr_swap(self, event):
 		event.widget['text'] = 'MIN' if event.widget['text'] == 'HR' else 'HR'	
 
-	def preview(self):
+	def preview_input(self):
 		if self.preview_var.get():
-			self.temp_img = self.source.capture(self.list_var.get())
-			if self.temp_img == None:
+			self.temp_img = self.source.capture(self.list_var.get()) #Capture Image from source
+			if self.temp_img == None: #Make sure Image IS captured
 				self.preview_var.set(0)
 				return
-			self.temp_photo = ImageTk.PhotoImage(self.temp_img.resize((self.preview_width, self.preview_height)))
-			self.canvas_preview.create_image((0, 0), image = self.temp_photo, anchor = TK.N +TK.W)
-			self.after(8, self.preview)
+
+			#If an object is selected, let's modify the image to show that.
+			i = self.get_selected_object()
+			if i != -1:
+				f = self.objects_path + self.listbox_objects.get(i)
+				self.temp_img = trak.find_objects_as_image(self.temp_img, [f])
+
+
+			self.photo_preview = ImageTk.PhotoImage(self.temp_img.resize((self.preview_width, self.preview_height)))
+			self.canvas_preview.create_image((0, 0), image = self.photo_preview, anchor = TK.N +TK.W)
+			self.after(8, self.preview_input)
 		else:
 			self.source.release()
-			self.canvas_preview.delete("all")
+			#self.canvas_preview.delete("all")
+
+	def get_selected_object(self):
+		if len(self.listbox_objects.curselection()) == 0:
+			return -1
+		else:
+			return self.listbox_objects.curselection()[0]
+
+	def preview_object(self, event):
+		i = self.get_selected_object()
+		if (i != -1):
+			f = self.objects_path + self.listbox_objects.get(i)
+			temp_obj = Image.open(f)
+			self.obj_preview = ImageTk.PhotoImage(temp_obj.resize((100, 100)))
+			self.canvas_preview_object.create_image((0,0), image = self.obj_preview, anchor = TK.N +TK.W)
 
 	def switch_input(self):
 		self.preview_var.set(0)
 		if not self.input_var.get():
-			self.source = trak.TrakCam('objects/')
+			self.source = trak.TrakCam(self.objects_path)
 		else:
-			self.source = trak.TrakWindow('objects/')
-
-
+			self.source = trak.TrakWindow(self.objects_path)
 
 		self.optionmenu_sources = apply(TK.OptionMenu, (self.labelframe_source, self.list_var) + tuple(self.source.source_list[1]))
 		self.optionmenu_sources.grid(row = 1, column = 0, columnspan = 2, sticky = TK.W)
 
+	def update_object_list(self, event):
+		size = self.listbox_objects.size()
+		self.listbox_objects.delete(0, size)
+		self.objects = [f for f in listdir(self.objects_path)]
+		apply(self.listbox_objects.insert, (0,) + tuple(self.objects))
+
+
+	def __on_exit(self):
+		self.preview_var.set(0)
+		self.source.release()
+		self.canvas_preview.delete("all")
+		self.master.destroy()
+
 
 if __name__ == '__main__':
-	main = MainWindow()
+	main = MainWindow('objects/')
 	main.show()
