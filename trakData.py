@@ -1,31 +1,63 @@
 from xlrd import open_workbook, Book
-from tempfile import TemporaryFile
+from xlutils.copy import copy
 from xlwt import Workbook
 from collections import defaultdict
+from datetime import datetime, timedelta
+import time
+
+def list_to_time(l):
+	return datetime.strptime(str(l), "['%I', '%M', '%p']")
+
+class TrakData:
+	def __init__(self, objects, from_, to, interval, load = r'data\data.xls'):
+		self.output = load
+		self.book = Workbook()
+		self.sheets = []
+		for o in objects:
+			self.sheets.append(self.book.add_sheet(o, cell_overwrite_ok=True))
+		delta = None
+		if interval[1] == 'HR':
+			delta = timedelta(hours = int(interval[0]))
+		else:
+			delta = timedelta(minutes = int(interval[0]))
+
+		d = list_to_time(from_)
+		self.cols = dict()
+		i = 1
+		while d <= list_to_time(to):
+			for s in self.sheets:
+				t = d.strftime("%I:%M %p")
+				s.write(0, i, t)
+				self.cols['t'] = i
+			d += delta
+			i += 1
+		self.row_count = 1
+		self.last_day = time.strftime('%d')
+
+	def write(self, name, data):
+		t = time.strftime("%I:%M %p")
+		d = time.strftime("%d-%m-%Y")
+
+		current_day = time.strftime('%d')
+		if self.last_day != current_day:
+			self.row_count += 1
+			self.last_day = current_day
+		row = self.row_count 
+
+		for sheet in self.sheets:
+			if sheet.name == name:
+				sheet.write(row, 0, d)
+				sheet.write(row, self.cols[t], str(data))
+
+	def save(self):
+		self.book.save(self.output)
+
+	def __save_backup(self):
+		self.book.save(self.output.replace('.', '[Backup].'))
 
 
-# class TrakData:
-# 	def __init__(self, output, objects, load = ''):
-# 		self.output = output + '\\'+ 'trakdata.csv'
-# 		self.book = Workbook()
-# 		for n in objects:
-# 			self.book.add_sheet(n)
-
-# 	def add_data(self, object, data):
-# 		pass
-
-# 	def save(self):
-# 		self.book.save(self.output)
-
-
-
-# if __name__ == '__main__':
-# 	td = TrakData('output', ['Mario', 'Loot'])
-# 	td.save()
-
-
-class TrakData():
-	def __init__(self, file):
+class TrakOptions():
+	def __init__(self, file = r'data\options.txt'):
 		self.data = defaultdict(list)
 		self.filename = file
 		try:
@@ -57,8 +89,9 @@ class TrakData():
 
 	def save(self):
 		self.file = open(self.filename, 'w')
+		self.file.write('#PLEASE AVOID EDITING THIS FILE MANUALLY\n')
 		for k in self.data.keys():
-			self.file.write('.' + k + '\n')
+			self.file.write('.' + str(k) + '\n')
 			for l in self.data[k]:
-				self.file.write(l + '\n')
+				self.file.write(str(l) + '\n')
 		self.file.close()

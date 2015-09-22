@@ -3,6 +3,8 @@ import Tkinter as TK
 from PIL import ImageTk, Image
 from os import listdir
 import trak, trakData
+import time
+from datetime import datetime, timedelta
 
 
 class MainWindow(TK.Frame):
@@ -24,7 +26,6 @@ class MainWindow(TK.Frame):
 		self.input_var=TK.IntVar()
 		self.radiobutton_cam = TK.Radiobutton(master = self.labelframe_source, text = "Cam", variable = self.input_var, value = 0, command = self.switch_input)
 		self.radiobutton_cam.grid(row = 0, column = 0,sticky = TK.W)
-		self.radiobutton_cam.select()
 		self.radiobutton_window = TK.Radiobutton(master = self.labelframe_source, text = "Window", variable = self.input_var, value = 1, command = self.switch_input)
 		self.radiobutton_window.grid(row = 0, column = 1,sticky = TK.W)
 
@@ -47,7 +48,7 @@ class MainWindow(TK.Frame):
 
 		#TIMER
 		self.labelframe_timer = TK.LabelFrame(master = self.frame_righthalf, text = 'Timer')
-		self.labelframe_timer.grid(row = 1, sticky = TK.E)
+		self.labelframe_timer.grid(row = 1, column = 0, columnspan = 3, sticky = TK.E)
 
 		self.repeat_var = [TK.IntVar() for i in range(7)]
 		self.checkbutton_repeat_Mon = TK.Checkbutton(master = self.labelframe_timer, text = 'Mon', variable = self.repeat_var[0])
@@ -65,37 +66,46 @@ class MainWindow(TK.Frame):
 		self.checkbutton_repeat_Sun = TK.Checkbutton(master = self.labelframe_timer, text = 'Sun', variable = self.repeat_var[6])
 		self.checkbutton_repeat_Sun.grid(row = 0, column = 6)
 
-		self.label_from = TK.Label(master = self.labelframe_timer, text = 'FROM:')
+
+		self.label_interval = TK.Label(master = self.labelframe_timer, text = 'EVERY: ')
+		self.label_interval.grid(row = 1, column = 0, sticky = TK.W)
+		self.interval_var = TK.StringVar(self)
+		self.spinbox_interval = TK.Spinbox(master = self.labelframe_timer, from_ = 1, to = 999, width = 3, textvariable = self.interval_var)
+		self.spinbox_interval.grid(row = 1, column = 1)
+		self.button_interval = TK.Button(master = self.labelframe_timer, text = 'MIN')
+		self.button_interval.grid(row = 1, column = 2)
+		self.button_interval.bind('<ButtonRelease-1>', lambda event: self.min_to_hr_swap(event))
+
+		self.labelframe_blackout =  TK.LabelFrame(master = self.labelframe_timer, text = 'Blackout')
+		self.labelframe_blackout.grid(row = 2, columnspan = 3, sticky = TK.W)
+
+		self.label_from = TK.Label(master = self.labelframe_blackout, text = 'FROM:')
 		self.label_from.grid(row = 1, column = 0, columnspan = 1, sticky = TK.W)
-		self.spinbox_from_hr = TK.Spinbox(master = self.labelframe_timer, from_ = 1, to = 12, width = 2)
+		self.from_hr_var = TK.StringVar(self)
+		self.spinbox_from_hr = TK.Spinbox(master = self.labelframe_blackout, from_ = 1, to = 12, width = 2, textvariable = self.from_hr_var)
 		self.spinbox_from_hr.grid(row = 1, column = 2)
-		self.spinbox_from_min = TK.Spinbox(master = self.labelframe_timer, from_ = 00, to = 59, width = 2)
+		self.from_min_var = TK.StringVar(self)
+		self.spinbox_from_min = TK.Spinbox(master = self.labelframe_blackout, from_ = 00, to = 59, width = 2, textvariable = self.from_min_var)
 		self.spinbox_from_min.grid(row = 1, column = 3)
-		self.button_from = TK.Button(master = self.labelframe_timer, text = 'AM')
+		self.button_from = TK.Button(master = self.labelframe_blackout, text = 'AM')
 		self.button_from.grid(row = 1, column = 4)
 		self.button_from.bind('<ButtonRelease-1>', lambda event: self.am_pm_swap(event))
 
-		self.label_to = TK.Label(master = self.labelframe_timer, text = 'TO:')
+		self.label_to = TK.Label(master = self.labelframe_blackout, text = 'TO:')
 		self.label_to.grid(row = 2, column = 0, columnspan = 1, sticky = TK.W)
-		self.spinbox_to_hr = TK.Spinbox(master = self.labelframe_timer, from_ = 1, to = 12, width = 2)
+		self.to_hr_var = TK.StringVar(self)
+		self.spinbox_to_hr = TK.Spinbox(master = self.labelframe_blackout, from_ = 1, to = 12, width = 2, textvariable = self.to_hr_var)
 		self.spinbox_to_hr.grid(row = 2, column = 2)
-		self.spinbox_to_min = TK.Spinbox(master = self.labelframe_timer, from_ = 0, to = 59, width = 2)
+		self.to_min_var = TK.StringVar(self)
+		self.spinbox_to_min = TK.Spinbox(master = self.labelframe_blackout, from_ = 0, to = 59, width = 2, textvariable = self.to_min_var)
 		self.spinbox_to_min.grid(row = 2, column = 3)
-		self.button_to = TK.Button(master = self.labelframe_timer, text = 'PM')
+		self.button_to = TK.Button(master = self.labelframe_blackout, text = 'PM')
 		self.button_to.grid(row = 2, column = 4)
 		self.button_to.bind('<ButtonRelease-1>', lambda event: self.am_pm_swap(event))
 
-		self.label_interval = TK.Label(master = self.labelframe_timer, text = 'EVERY: ')
-		self.label_interval.grid(row = 3, column = 0, sticky = TK.W)
-		self.spinbox_interval = TK.Spinbox(master = self.labelframe_timer, from_ = 1, to = 999, width = 3)
-		self.spinbox_interval.grid(row = 3, column = 2)
-		self.button_interval = TK.Button(master = self.labelframe_timer, text = 'MIN')
-		self.button_interval.grid(row = 3, column = 3)
-		self.button_interval.bind('<ButtonRelease-1>', lambda event: self.min_to_hr_swap(event))
-
 		#OBJECTS
 		self.labelframe_objects = TK.LabelFrame(master = self.frame_righthalf, text = 'Input')
-		self.labelframe_objects.grid(row = 0, sticky = TK.W)
+		self.labelframe_objects.grid(row = 0, column = 0,  columnspan = 2, sticky = TK.W)
 		
 		self.listbox_objects = TK.Listbox(master = self.labelframe_objects, selectmode = TK.SINGLE)
 		self.listbox_objects.grid(row = 0)
@@ -105,26 +115,37 @@ class MainWindow(TK.Frame):
 		self.canvas_preview_object = TK.Canvas(master = self.labelframe_objects, background = "#FFFFFF", height = 100, width = 100)
 		self.canvas_preview_object.grid(row = 0, column = 1, sticky = TK.E)
 
+		#START
+		self.labelframe_start = TK.LabelFrame(master = self.labelframe_timer, text = 'START')
+		self.labelframe_start.grid(row = 2, column = 4, sticky = TK.E)
+
+		self.label_time_status = TK.Label(master = self.labelframe_start, text = '')
+		self.label_time_status.grid(row = 0)
+		self.button_start = TK.Button(master = self.labelframe_start, text = 'START', command = self.start)
+		self.button_start.grid(row = 1)
+
 		self.setup()
 		self.pack()
 
 
 	def setup(self):
 		#LOAD Data
-		self.data = trakData.TrakData(data + 'options.txt')
-		source = self.data.get('SOURCE')[0]
-		preview = self.data.get('PREVIEW')[0]
-		to = self.data.get('TO')
-		from_ = self.data.get('FROM')
-		every = self.data.get('EVERY')
+		self.options = trakData.TrakOptions()
+		source = self.options.get('SOURCE')[0]
+		preview = self.options.get('PREVIEW')[0]
+		to = self.options.get('TO')
+		from_ = self.options.get('FROM')
+		every = self.options.get('EVERY')
 		days = ['MON', 'TUE', 'WED', 'THURS', 'FRI', 'SAT', 'SUN']
-		[self.repeat_var[d].set(int(self.data.get(days[d])[0])) for d in range(len(days))]
+		[self.repeat_var[d].set(int(self.options.get(days[d])[0])) for d in range(len(days))]
 
 		#SET options
 		if source == 'CAM':
 			self.source = trak.TrakCam(self.objects_path)
+			self.input_var.set(0)
 		else:
-			self.source = trak.TrakWindow(self.objects_path)	
+			self.source = trak.TrakWindow(self.objects_path)
+			self.input_var.set(1)	
 		self.optionmenu_sources = apply(TK.OptionMenu, (self.labelframe_source, self.list_var) + tuple(self.source.source_list[1]))
 		self.optionmenu_sources.grid(row = 1, column = 0, columnspan = 2, sticky = TK.W)
 		
@@ -132,21 +153,21 @@ class MainWindow(TK.Frame):
 			self.preview_var.set(1)
 			self.preview_input()
 
-		self.spinbox_to_hr['textvariable'] = TK.StringVar(self).set(to[0])
-		self.spinbox_to_min['textvariable'] = TK.StringVar(self).set(to[1])
+		self.to_hr_var.set(to[0])
+		self.to_min_var.set(to[1])
 		self.button_to['text'] = to[2]
 
-		self.spinbox_from_hr['textvariable'] = TK.StringVar(self).set(from_[0])
-		self.spinbox_from_min['textvariable'] = TK.StringVar(self).set(from_[1])
+		self.from_hr_var.set(from_[0])
+		self.from_min_var.set(from_[1])
 		self.button_from['text'] = from_[2]
 
-		self.spinbox_interval['textvariable'] = TK.StringVar(self).set(every[0])
+		self.interval_var.set(every[0])
 		self.button_interval['text'] = every[1] 
 
 		self.update_object_list(None)
 
 	def show(self):
-		self.mainloop()
+		self.master.mainloop()
 
 	def am_pm_swap(self, event):
 		event.widget['text'] = 'PM' if event.widget['text'] == 'AM' else 'AM'
@@ -206,15 +227,82 @@ class MainWindow(TK.Frame):
 		apply(self.listbox_objects.insert, (0,) + tuple(self.objects))
 
 
+	def save_options(self):
+		self.options.set('SOURCE', ['CAM'] if not self.input_var.get() else ['WINDOW'])
+		self.options.set('PREVIEW', [self.preview_var.get()])
+		self.options.set('TO', [self.to_hr_var.get(), self.to_min_var.get(), self.button_to['text']])
+		self.options.set('FROM', [self.from_hr_var.get(), self.from_min_var.get(), self.button_from['text']])
+		self.options.set('EVERY', [self.interval_var.get(), self.button_interval['text']])
+		days = ['MON', 'TUE', 'WED', 'THURS', 'FRI', 'SAT', 'SUN']
+		[self.options.set(days[d], [self.repeat_var[d].get()]) for d in range(len(days))]
+		self.options.save()
+
+	def start(self):
+		to = [self.to_hr_var.get(), self.to_min_var.get(), self.button_to['text']]
+		from_ = [self.from_hr_var.get(), self.from_min_var.get(), self.button_from['text']]
+		every = [self.interval_var.get(), self.button_interval['text']]
+
+		now = datetime.now()
+		start = datetime.strptime(str(from_), "['%I', '%M', '%p']").replace(year = now.year, day = now.day, month = now.month)
+		end = datetime.strptime(str(to), "['%I', '%M', '%p']").replace(year = now.year, day = now.day, month = now.month)
+
+		self.data = trakData.TrakData(self.objects, from_, to, every)
+
+		delta = None
+		if every[1] == 'HR':
+			delta = timedelta(hours = int(every[0]))
+		else:
+			delta = timedelta(minutes = int(every[0]))
+
+		d = now
+		self.cols = []
+		while d <= start:
+			t = d.strftime("%I:%M %p")
+			self.cols.append(t)
+			d += delta
+
+		print self.cols
+		# wait_in_minutes = int((start - now).seconds / 60)
+
+		# if wait_in_minutes == 0:
+		# 	self.update_data()
+		# 	time.sleep(60)
+		
+		# self.start_timer(every, end)
+
+
+		# print wait_in_minutes
+
+	def start_timer(self):
+		pass
+
+	def update_data(self):
+		self.data.write('mario', (5, 6))
+
+
 	def __on_exit(self):
-		self.preview_var.set(0)
+		try:
+			self.save_options()
+		except Exception as c:
+			print c
 		self.source.release()
 		self.canvas_preview.delete("all")
 		self.master.destroy()
 
 
 if __name__ == '__main__':
-	data = 'data\\'
+
+	# data = trakData.TrakOptions()
+	# to = data.get('TO')
+	# from_ = data.get('FROM')
+	# every = data.get('EVERY')
+
+
+	# td = trakData.TrakData(['mario', 'Luigi'], from_, to, every)
+	# td.write('mario', (5, 6))
+
+	# td.save()
+
 	main = MainWindow('objects/')
 	main.show()
 
