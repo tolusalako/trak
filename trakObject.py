@@ -1,12 +1,5 @@
-class Unknown():
-	pass
-
-
 class Object:
-	mobility = Unknown()
-	encounters = 0
-	dom_color = tuple() #Always present somewhere
-	sec_color = list(tuple()) #Sometimes present
-	effect = Unknown()
-	reputation = Unknown()
-	range_ = Unknown()
+    def __init__(self, name, loc, size):
+        self.name = name
+        self.location = loc
+        self.size = size #w,h

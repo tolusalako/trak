@@ -42,7 +42,6 @@ def find_objects_as_image(img, objects):
 	return Image.fromarray(img_copy)
 
 class TrakWindow():
-
 	def __init__(self, obj_path):
 		self.objects_path = obj_path
 		self.source_list = ([], [])  #list of all matching windows

@@ -2,52 +2,20 @@ from xlrd import open_workbook, Book
 from xlutils.copy import copy
 from xlwt import Workbook
 from collections import defaultdict
-from datetime import datetime, timedelta
-import time
 
-def list_to_time(l):
-	return datetime.strptime(str(l), "['%I', '%M', '%p']")
 
 class TrakData:
-	def __init__(self, objects, from_, to, interval, load = r'data\data.xls'):
+	def __init__(self, objects, load = r'data\data.xls'):
 		self.output = load
 		self.book = Workbook()
 		self.sheets = []
 		for o in objects:
 			self.sheets.append(self.book.add_sheet(o, cell_overwrite_ok=True))
-		delta = None
-		if interval[1] == 'HR':
-			delta = timedelta(hours = int(interval[0]))
-		else:
-			delta = timedelta(minutes = int(interval[0]))
 
-		d = list_to_time(from_)
-		self.cols = dict()
-		i = 1
-		while d <= list_to_time(to):
-			for s in self.sheets:
-				t = d.strftime("%I:%M %p")
-				s.write(0, i, t)
-				self.cols['t'] = i
-			d += delta
-			i += 1
-		self.row_count = 1
-		self.last_day = time.strftime('%d')
-
-	def write(self, name, data):
-		t = time.strftime("%I:%M %p")
-		d = time.strftime("%d-%m-%Y")
-
-		current_day = time.strftime('%d')
-		if self.last_day != current_day:
-			self.row_count += 1
-			self.last_day = current_day
-		row = self.row_count 
-
+	def write(self, x, y, data, obj = 'ALL'):
 		for sheet in self.sheets:
-			if sheet.name == name:
-				sheet.write(row, 0, d)
-				sheet.write(row, self.cols[t], str(data))
+			if sheet.name == obj or obj == 'ALL':
+				sheet.write(x, y, str(data))
 
 	def save(self):
 		self.book.save(self.output)
