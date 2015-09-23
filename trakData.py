@@ -14,7 +14,7 @@ class TrakData:
 
 	def write(self, x, y, data, obj = 'ALL'):
 		for sheet in self.sheets:
-			if sheet.name == obj or obj == 'ALL':
+			if ((sheet.name == obj) or (obj == 'ALL')):
 				sheet.write(x, y, str(data))
 
 	def save(self):

@@ -177,24 +177,25 @@ class MainWindow(TK.Frame):
 
     def preview_input(self):
         if self.preview_var.get():
-            self.temp_img = self.source.capture(self.list_var.get()) #Capture Image from source
-            if self.temp_img == None: #Make sure Image IS captured
-                self.preview_var.set(0)
-                return
+            if self.list_var.get() != "":
+                self.temp_img = self.source.capture(self.list_var.get()) #Capture Image from source
+                if self.temp_img == None: #Make sure Image IS captured
+                    self.preview_var.set(0)
+                    return
 
-            #If an object is selected, let's modify the image to show that.
-            i = self.get_selected_object()
-            if i != -1:
-                f = self.objects_path + self.listbox_objects.get(i)
-                self.temp_img = trak.find_objects_as_image(self.temp_img, [f])
+                #If an object is selected, let's modify the image to show that.
+                i = self.get_selected_object()
+                if i != -1:
+                    f = self.objects_path + self.listbox_objects.get(i)
+                    self.temp_img = trak.find_objects_as_image(self.temp_img, [f])
 
 
-            self.photo_preview = ImageTk.PhotoImage(self.temp_img.resize((self.preview_width, self.preview_height)))
-            self.canvas_preview.create_image((0, 0), image = self.photo_preview, anchor = TK.N +TK.W)
-            self.after(8, self.preview_input)
-        else:
-            self.source.release()
-            #self.canvas_preview.delete("all")
+                self.photo_preview = ImageTk.PhotoImage(self.temp_img.resize((self.preview_width, self.preview_height)))
+                self.canvas_preview.create_image((0, 0), image = self.photo_preview, anchor = TK.N +TK.W)
+                self.after(8, self.preview_input)
+            else:
+                self.source.release()
+                #self.canvas_preview.delete("all")
 
     def get_selected_object(self):
         if len(self.listbox_objects.curselection()) == 0:
@@ -246,6 +247,8 @@ class MainWindow(TK.Frame):
         start = datetime.strptime(str(from_), "['%I', '%M', '%p']").replace(year = now.year, day = now.day, month = now.month)
         end = datetime.strptime(str(to), "['%I', '%M', '%p']").replace(year = now.year, day = now.day, month = now.month)
 
+
+
         self.data = trakData.TrakData(self.objects)
 
         delta = None
@@ -254,29 +257,40 @@ class MainWindow(TK.Frame):
         else:
             delta = timedelta(minutes = int(every[0]))
 
-        d = now
-        self.cols = []
+        d = start
+        self.cols = ["None"]
         i = 1
-        while d <= start:
+        while d <= end:
             t = d.strftime("%I:%M %p")
-            self.cols.append(t)
+            self.cols.append(d)
             self.data.write(0, i, t) #Column Names
             d += delta
             i += 1
             
             
         x, y = 1,1
-        while(True):
-            if x >= len(self.cols) - 1:
-                x = 1 #reset time
-                self.data.write(0, y, time.strftime("%m-%d-%Y")) #Write the current date on all lines
-            self.temp_img = self.source.capture(self.list_var.get())
-            if self.temp_img != None:
-                found_objects = trak.find_objects_as_objects(self.temp_img, self.objects) 
-                for obj in found_objects:
-                    self.data.write(x, y, obj.location)
-            y +=1
-            x +=1
+
+    
+        if start < now < end: #Blackout hours. No activity
+            wait_in_seconds = int((start - now).seconds)
+        else:
+            wait_in_seconds = int((self.cols[x] - now).seconds)
+
+        if wait_in_seconds < 60: #Record
+            print 'snap'
+
+        # if x >= len(self.cols) - 1:
+        #     x = 1 #reset time
+        #     self.data.write(0, y, time.strftime("%m-%d-%Y")) #Write the current date on all lines
+        
+        # if self.list_var.get() != "":
+        #     self.temp_img = self.source.capture(self.list_var.get())
+        #     if self.temp_img != None:
+        #         found_objects = trak.find_objects_as_objects(self.temp_img, [self.objects_path + o for o in self.objects]) 
+        #         for obj in found_objects:
+        #             self.data.write(x, y, obj.location, obj = obj.name)
+        # y +=1
+        # x +=1
         
 		#print self.cols
 		# wait_in_minutes = int((start - now).seconds / 60)
@@ -290,8 +304,9 @@ class MainWindow(TK.Frame):
 
 		# print wait_in_minutes
 
-    def start_timer(self):
-        pass
+    def wait(self, t):
+        if t > 60:
+            time.sleep(t - 5)
 
     def update_data(self, col):
         self.data.write('mario', (5, 6))

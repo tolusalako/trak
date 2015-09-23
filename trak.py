@@ -4,7 +4,7 @@ import time, sys
 from PIL import Image
 from os import listdir
 from scipy import where, asarray
-from objects import object
+from trakObject import Object
 
 
 def find_objects_as_objects(img, objects): #Multiple objects fix		
@@ -16,13 +16,18 @@ def find_objects_as_objects(img, objects): #Multiple objects fix
 	for obj in objects:
 		img_copy = img_rgb.copy()
 		template = cv2.imread(obj, 0)
+		if template is None:
+			continue
 		w, h = template.shape[::-1]
 
 		res = cv2.matchTemplate(img_gray,template,cv2.TM_CCOEFF_NORMED)
 
 		threshold = .6
 		loc = where( res >= threshold)
-		found_objects.add(object(obj, loc[0], (w,h))) #Can use the first loc value or the avg of them. It is usually accurate
+		for pt in zip(*loc[::-1]):
+			name = obj.split('/')[-1]
+			found_objects.add(Object(name, pt, (w,h))) #Can use the first loc value or the avg of them. It is usually accurate
+			break
 	return found_objects
 
 def find_objects_as_image(img, objects):
@@ -31,6 +36,8 @@ def find_objects_as_image(img, objects):
 	img_copy = img_rgb.copy()
 	for obj in objects:
 		template = cv2.imread(obj, 0)
+		if template is None:
+			continue
 		w, h = template.shape[::-1]
 
 		res = cv2.matchTemplate(img_gray,template,cv2.TM_CCOEFF_NORMED)
@@ -112,7 +119,7 @@ class TrakCam():
 		for i in xrange(ramp_frames):
 			retval, im = self.camera.read()
 		retval, im = self.camera.read()
- 		return None if im == None else Image.fromarray(im)
+ 		return None if im is None else Image.fromarray(im)
 
  	def release(self):
  		if not self._released:
