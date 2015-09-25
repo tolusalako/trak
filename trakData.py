@@ -18,7 +18,10 @@ class TrakData:
 				sheet.write(x, y, str(data))
 
 	def save(self):
-		self.book.save(self.output)
+		try:
+			self.book.save(self.output)
+		except Exception, e:
+			self.__save_backup()
 
 	def __save_backup(self):
 		self.book.save(self.output.replace('.', '[Backup].'))

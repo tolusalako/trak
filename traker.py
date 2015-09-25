@@ -3,7 +3,7 @@ import Tkinter as TK
 from PIL import ImageTk, Image
 from os import listdir
 import trak, trakData
-import time
+import time, sys
 from datetime import datetime, timedelta
 
 
@@ -248,68 +248,78 @@ class MainWindow(TK.Frame):
         end = datetime.strptime(str(to), "['%I', '%M', '%p']").replace(year = now.year, day = now.day, month = now.month)
 
 
+        if end < start:
+            end = end.replace(day = now.day + 1)
 
         self.data = trakData.TrakData(self.objects)
-
         delta = None
+        interval = every[0]
         if every[1] == 'HR':
-            delta = timedelta(hours = int(every[0]))
+            delta = timedelta(hours = int(interval))
         else:
-            delta = timedelta(minutes = int(every[0]))
+            delta = timedelta(minutes = int(interval))
 
-        d = start
-        self.cols = ["None"]
+        d = end
+        self.cols = {}
         i = 1
-        while d <= end:
+        while True:
             t = d.strftime("%I:%M %p")
-            self.cols.append(d)
+            self.cols[(d.hour, d.minute)] = i
             self.data.write(0, i, t) #Column Names
             d += delta
             i += 1
-            
-            
+
+            if d == start.replace(day = d.day, minute = d.minute):
+                break
+            elif start < d.replace(day = end.day) < end:
+                continue
         x, y = 1,1
 
-    
-        if start < now < end: #Blackout hours. No activity
-            wait_in_seconds = int((start - now).seconds)
-        else:
-            wait_in_seconds = int((self.cols[x] - now).seconds)
+        wait_in_seconds = 0
+        while True:
+            self.wait(wait_in_seconds)
+            now = datetime.now()
+            #start = start.replace(year = now.year, month = now.month, day = now.day)
+            end = end.replace(year = now.year, month = now.month, day = now.day)
 
-        if wait_in_seconds < 60: #Record
-            print 'snap'
+            if end < start:
+                end = end.replace(day = now.day + 1)
 
-        # if x >= len(self.cols) - 1:
-        #     x = 1 #reset time
-        #     self.data.write(0, y, time.strftime("%m-%d-%Y")) #Write the current date on all lines
+            if start < now < end: #Blackout hours. No activity
+                wait_in_seconds = int((end - now).seconds)
+            else:
+                day = datetime.today().weekday()
+                if self.repeat_var[day].get():#If current day is checked.
+                    x = self.cols.get((now.hour, now.minute), None)
+                    if x != None:
+                        self.write_data(x, y)
+                    y += 1
+                    wait_in_seconds = int(((now + delta) - now).seconds)
+                else: 
+                    day = day + 1 if day < 6 else 0
+                    if self.repeat_var[day].get():  
+                        wait_in_seconds = int((start.replace(day = now.day + 1, minute = now.minute) - now).seconds)
+                    else:
+                        wait_in_seconds = 24 * 60 * 60
+            sys.stdout.flush()
+            print 'Next in %s seconds.' % (wait_in_seconds)
+            break
+
+
+    def write_data(self, x, y):
+        if x >= len(self.cols) - 1:
+            self.data.write(0, y, time.strftime("%m-%d-%Y")) #Write the current date on all lines
         
-        # if self.list_var.get() != "":
-        #     self.temp_img = self.source.capture(self.list_var.get())
-        #     if self.temp_img != None:
-        #         found_objects = trak.find_objects_as_objects(self.temp_img, [self.objects_path + o for o in self.objects]) 
-        #         for obj in found_objects:
-        #             self.data.write(x, y, obj.location, obj = obj.name)
-        # y +=1
-        # x +=1
-        
-		#print self.cols
-		# wait_in_minutes = int((start - now).seconds / 60)
-
-		# if wait_in_minutes == 0:
-		# 	self.update_data()
-		# 	time.sleep(60)
-		
-		# self.start_timer(every, end)
-
-
-		# print wait_in_minutes
+        if self.list_var.get() != "":
+            self.temp_img = self.source.capture(self.list_var.get())
+            if self.temp_img != None:
+                found_objects = trak.find_objects_as_objects(self.temp_img, [self.objects_path + o for o in self.objects]) 
+                for obj in found_objects:
+                    self.data.write(x, y, obj.location, obj = obj.name)
 
     def wait(self, t):
         if t > 60:
-            time.sleep(t - 5)
-
-    def update_data(self, col):
-        self.data.write('mario', (5, 6))
+            time.sleep(abs(t - 5))
 
 
     def __on_exit(self):
