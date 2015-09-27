@@ -50,7 +50,6 @@ class TrakOptions():
 			elif line[0] == "#":
 				continue
 			self.data[key].append(line)
-		#print self.data
 
 	def get(self, key):
 		return self.data.get(key, None)

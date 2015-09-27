@@ -2,10 +2,7 @@
 import Tkinter as TK
 from PIL import ImageTk, Image
 from os import listdir
-import trak, trakData
-import time, sys
-from datetime import datetime, timedelta
-
+import traksource, trakdata, trak
 
 class MainWindow(TK.Frame):
     STICKY_ALL = TK.N + TK.S + TK.W + TK.E
@@ -130,7 +127,7 @@ class MainWindow(TK.Frame):
 
     def setup(self):
         #LOAD Data
-        self.options = trakData.TrakOptions()
+        self.options = trakdata.TrakOptions()
         source = self.options.get('SOURCE')[0]
         preview = self.options.get('PREVIEW')[0]
         to = self.options.get('TO')
@@ -141,10 +138,10 @@ class MainWindow(TK.Frame):
 
         #SET options
         if source == 'CAM':
-            self.source = trak.TrakCam(self.objects_path)
+            self.source = traksource.TrakCam(self.objects_path)
             self.input_var.set(0)
         else:
-            self.source = trak.TrakWindow(self.objects_path)
+            self.source = traksource.TrakWindow(self.objects_path)
             self.input_var.set(1)	
         self.optionmenu_sources = apply(TK.OptionMenu, (self.labelframe_source, self.list_var) + tuple(self.source.source_list[1]))
         self.optionmenu_sources.grid(row = 1, column = 0, columnspan = 2, sticky = TK.W)
@@ -187,8 +184,10 @@ class MainWindow(TK.Frame):
                 i = self.get_selected_object()
                 if i != -1:
                     f = self.objects_path + self.listbox_objects.get(i)
-                    self.temp_img = trak.find_objects_as_image(self.temp_img, [f])
-
+                    self.temp_img = traksource.find_objects_as_image(self.temp_img, [f])
+                else:
+                    self.temp_img = traksource.find_objects_as_image(self.temp_img, [self.objects_path + o for o in self.objects], False) 
+#                
 
                 self.photo_preview = ImageTk.PhotoImage(self.temp_img.resize((self.preview_width, self.preview_height)))
                 self.canvas_preview.create_image((0, 0), image = self.photo_preview, anchor = TK.N +TK.W)
@@ -214,9 +213,9 @@ class MainWindow(TK.Frame):
     def switch_input(self):
         self.preview_var.set(0)
         if not self.input_var.get():
-            self.source = trak.TrakCam(self.objects_path)
+            self.source = traksource.TrakCam(self.objects_path)
         else:
-            self.source = trak.TrakWindow(self.objects_path)
+            self.source = traksource.TrakWindow(self.objects_path)
 
         self.optionmenu_sources = apply(TK.OptionMenu, (self.labelframe_source, self.list_var) + tuple(self.source.source_list[1]))
         self.optionmenu_sources.grid(row = 1, column = 0, columnspan = 2, sticky = TK.W)
@@ -239,93 +238,13 @@ class MainWindow(TK.Frame):
         self.options.save()
 
     def start(self):
-        to = [self.to_hr_var.get(), self.to_min_var.get(), self.button_to['text']]
-        from_ = [self.from_hr_var.get(), self.from_min_var.get(), self.button_from['text']]
-        every = [self.interval_var.get(), self.button_interval['text']]
-
-        now = datetime.now()
-        start = datetime.strptime(str(from_), "['%I', '%M', '%p']").replace(year = now.year, day = now.day, month = now.month)
-        end = datetime.strptime(str(to), "['%I', '%M', '%p']").replace(year = now.year, day = now.day, month = now.month)
-
-
-        if end < start:
-            end = end.replace(day = now.day + 1)
-
-        self.data = trakData.TrakData(self.objects)
-        delta = None
-        interval = every[0]
-        if every[1] == 'HR':
-            delta = timedelta(hours = int(interval))
-        else:
-            delta = timedelta(minutes = int(interval))
-
-        d = end
-        self.cols = {}
-        i = 1
-        while True:
-            t = d.strftime("%I:%M %p")
-            self.cols[(d.hour, d.minute)] = i
-            self.data.write(0, i, t) #Column Names
-            d += delta
-            i += 1
-
-            if d == start.replace(day = d.day, minute = d.minute):
-                break
-            elif start < d.replace(day = end.day) < end:
-                continue
-        x, y = 1,1
-
-        wait_in_seconds = 0
-        while True:
-            self.wait(wait_in_seconds)
-            now = datetime.now()
-            #start = start.replace(year = now.year, month = now.month, day = now.day)
-            end = end.replace(year = now.year, month = now.month, day = now.day)
-
-            if end < start:
-                end = end.replace(day = now.day + 1)
-
-            if start < now < end: #Blackout hours. No activity
-                wait_in_seconds = int((end - now).seconds)
-            else:
-                day = datetime.today().weekday()
-                if self.repeat_var[day].get():#If current day is checked.
-                    x = self.cols.get((now.hour, now.minute), None)
-                    if x != None:
-                        self.write_data(x, y)
-                    y += 1
-                    wait_in_seconds = int(((now + delta) - now).seconds)
-                else: 
-                    day = day + 1 if day < 6 else 0
-                    if self.repeat_var[day].get():  
-                        wait_in_seconds = int((start.replace(day = now.day + 1, minute = now.minute) - now).seconds)
-                    else:
-                        wait_in_seconds = 24 * 60 * 60
-            sys.stdout.flush()
-            print 'Next in %s seconds.' % (wait_in_seconds)
-            break
-
-
-    def write_data(self, x, y):
-        if x >= len(self.cols) - 1:
-            self.data.write(0, y, time.strftime("%m-%d-%Y")) #Write the current date on all lines
-        
-        if self.list_var.get() != "":
-            self.temp_img = self.source.capture(self.list_var.get())
-            if self.temp_img != None:
-                found_objects = trak.find_objects_as_objects(self.temp_img, [self.objects_path + o for o in self.objects]) 
-                for obj in found_objects:
-                    self.data.write(x, y, obj.location, obj = obj.name)
-
-    def wait(self, t):
-        if t > 60:
-            time.sleep(abs(t - 5))
+        self.__on_exit() 
+        runner = trak.Trak(self.objects_path)
 
 
     def __on_exit(self):
         try:
             self.save_options()
-            self.data.save()
         except Exception as c:
             print c
         self.source.release()
@@ -334,18 +253,7 @@ class MainWindow(TK.Frame):
 
 
 if __name__ == '__main__':
-
-	# data = trakData.TrakOptions()
-	# to = data.get('TO')
-	# from_ = data.get('FROM')
-	# every = data.get('EVERY')
-
-
-	# td = trakData.TrakData(['mario', 'Luigi'], from_, to, every)
-	# td.write('mario', (5, 6))
-
-	# td.save()
-
-    main = MainWindow('objects/')
-    main.show()
-
+	main = MainWindow('objects/')
+	main.show()
+	
+	
