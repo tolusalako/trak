@@ -44,9 +44,9 @@ class Trak():
         start = datetime.strptime(str(from_), "['%I', '%M', '%p']").replace(year = now.year, day = now.day, month = now.month)
         end = datetime.strptime(str(to), "['%I', '%M', '%p']").replace(year = now.year, day = now.day, month = now.month)
 
-
+        self.print_settings()
         if end < start:
-            end = end.replace(day = now.day + 1)
+            end += timedelta(days = 1)
 
         self.data = trakdata.TrakData(['Kai Test'])
         delta = None
@@ -57,19 +57,15 @@ class Trak():
             delta = timedelta(minutes = int(interval))
 
         d = end
+        e = start + timedelta(days = 1)
         self.cols = {}
         i = 1
-        while True:
+        while d < e:
             t = d.strftime("%I:%M %p")
-            self.cols[(d.hour, d.minute)] = i
+            self.cols[t] = i
             self.data.write(0, i, t) #Column Names
             d += delta
             i += 1
-
-            if d == start.replace(day = d.day, minute = d.minute):
-                break
-            elif start < d.replace(day = end.day) < end:
-                continue
         self.data.save()
         x, y = 1,1
 
@@ -81,7 +77,7 @@ class Trak():
             end = end.replace(year = now.year, month = now.month, day = now.day)
 
             if end < start:
-                end = end.replace(day = now.day + 1)
+                end += timedelta(days = 1)
 
             if start < now < end: #Blackout hours. No activity
                 print 'Blackout Hours starting now...'
@@ -90,31 +86,33 @@ class Trak():
             else:
                 day = datetime.today().weekday()
                 if self.repeat_var[day]:#Current day is checked.
-                    x = self.cols.get((now.hour, now.minute), None)
-                    if x != None:
-                        print 'Writing data...'
-                        if x == 1 or first_run: #New Day
+                    columns_as_time = [datetime.strptime(t, "%I:%M %p").
+                         replace(year = now.year, month = now.month, day = now.day) for t in self.cols.keys()]
+                    valid_times = filter(lambda x:  x >= now, columns_as_time)
+
+                    if len(valid_times) == 0: #Next valid time isn't till tomorrow:
+                        wait_in_seconds = int(((start.replace(year = now.year, month = now.month, day = now.day) + timedelta(days = 1)) - now).seconds) #Sleep till blackout starts
+                        print wait_in_seconds
+                        continue
+
+                    future_time = min(valid_times)
+                    if now == future_time:
+                        x = self.cols.get(now.strftime("%I:%M %p"), None)
+                        if x == 1 or first_run: #New Day or first_run
                             self.data.write(y, 0, time.strftime("%m-%d-%Y")) #Write the current date on all lines
                             first_run = False
                         self.write_data(x, y)
-                        wait_in_seconds = int(((now + delta) - now).seconds)
+                        wait_in_seconds = int(delta.seconds)
                     else:
-                        for h,m in self.cols.keys():
-                            if h == now.hour:
-                                if m > now.minute:
-                                    print m, now.minute
-                                    wait_in_seconds = (m - now.minute) * 60
-                                else:
-                                    wait_in_seconds = (60 - now.minute) * 60
-                                break
+                        wait_in_seconds = int((future_time - now).seconds)
                 else: 
                     day = day + 1 if day < 6 else 0
                     if self.repeat_var[day].get():  
-                        wait_in_seconds = int((start.replace(day = now.day + 1, minute = now.minute) - now).seconds)
+                        wait_in_seconds = int(((start.replace(year = now.year, month = now.month, day = now.day) + timedelta(days = 1)) - now).seconds) #Sleep till blackout starts
                     else:
                         wait_in_seconds = 24 * 60 * 60
-            
-            print 'Next in %s seconds.' % (wait_in_seconds) if wait_in_seconds > 60 else ''
+            if wait_in_seconds > 60:
+                print 'Next in %s seconds.' % (wait_in_seconds) 
 	    sys.stdout.flush()
 
     def write_data(self, x, y):
@@ -126,6 +124,10 @@ class Trak():
 #                found_objects = traksource.find_objects_as_objects(self.temp_img, [self.objects_path + o for o in self.objects]) 
 #                for obj in found_objects:
 #                    self.data.write(y, x, obj.location, obj = obj.name)
+
+    def print_settings(self):
+        print 'Trak started. \nLogging every %s %s.' % (self.interval_var, self.interval_am_pm)
+        print 'Blackout Hours: %s:%s %s to %s:%s %s.' % (self.from_hr_var, self.from_min_var, self.from_am_pm, self.to_hr_var, self.to_min_var, self.to_am_pm)
 
     def wait(self, t):
         if t > 60:
