@@ -52,7 +52,7 @@ class TrakOptions():
 			self.data[key].append(line)
 
 	def get(self, key):
-		return self.data.get(key, None)
+		return self.data.get(key, [None])
 
 	def set(self, key, value):
 		self.data[key] = value

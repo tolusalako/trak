@@ -10,7 +10,9 @@ class MainWindow(TK.Frame):
     def __init__(self, objects_path):
         self.master = TK.Tk()
         TK.Frame.__init__(self, self.master)
+
         self.master.protocol('WM_DELETE_WINDOW', self.__on_exit)
+        self.master.wm_title("Trak")
 
         self.objects_path = objects_path
         self.preview_width = 300
@@ -30,7 +32,7 @@ class MainWindow(TK.Frame):
 
         self.preview_var = TK.IntVar()
         self.checkbutton_preview = TK.Checkbutton(master = self.labelframe_source, variable = self.preview_var, command = self.preview_input)
-        self.checkbutton_preview.grid(row = 1, column = 2)
+        self.checkbutton_preview.grid(row = 1, column = 1)
         self.preview_var.set(0)
 
         self.labelframe_preview = TK.LabelFrame(master = self.labelframe_source, text = 'Preview')
@@ -63,14 +65,15 @@ class MainWindow(TK.Frame):
         self.checkbutton_repeat_Sun = TK.Checkbutton(master = self.labelframe_timer, text = 'Sun', variable = self.repeat_var[6])
         self.checkbutton_repeat_Sun.grid(row = 0, column = 6)
 
-
-        self.label_interval = TK.Label(master = self.labelframe_timer, text = 'EVERY: ')
-        self.label_interval.grid(row = 1, column = 0, sticky = TK.W)
+        self.frame_interval = TK.Frame(master = self.labelframe_timer)
+        self.frame_interval.grid(row = 1, column = 0, columnspan = 3)
+        self.label_interval = TK.Label(master = self.frame_interval, text = 'INTERVAL: Every ')
+        self.label_interval.grid(row = 1, column = 0, columnspan = 2, sticky = TK.W)
         self.interval_var = TK.StringVar(self)
-        self.spinbox_interval = TK.Spinbox(master = self.labelframe_timer, from_ = 1, to = 999, width = 3, textvariable = self.interval_var)
-        self.spinbox_interval.grid(row = 1, column = 1)
-        self.button_interval = TK.Button(master = self.labelframe_timer, text = 'MIN')
-        self.button_interval.grid(row = 1, column = 2)
+        self.spinbox_interval = TK.Spinbox(master = self.frame_interval, from_ = 1, to = 999, width = 3, textvariable = self.interval_var)
+        self.spinbox_interval.grid(row = 1, column = 2)
+        self.button_interval = TK.Button(master = self.frame_interval, text = 'MIN')
+        self.button_interval.grid(row = 1, column = 3)
         self.button_interval.bind('<ButtonRelease-1>', lambda event: self.min_to_hr_swap(event))
 
         self.labelframe_blackout =  TK.LabelFrame(master = self.labelframe_timer, text = 'Blackout')
@@ -101,8 +104,8 @@ class MainWindow(TK.Frame):
         self.button_to.bind('<ButtonRelease-1>', lambda event: self.am_pm_swap(event))
 
         #OBJECTS
-        self.labelframe_objects = TK.LabelFrame(master = self.frame_righthalf, text = 'Input')
-        self.labelframe_objects.grid(row = 0, column = 0,  columnspan = 2, sticky = TK.W)
+        self.labelframe_objects = TK.LabelFrame(master = self.frame_righthalf, text = 'Objects')
+        self.labelframe_objects.grid(row = 0, column = 1, sticky = TK.W)
 
         self.listbox_objects = TK.Listbox(master = self.labelframe_objects, selectmode = TK.SINGLE)
         self.listbox_objects.grid(row = 0)
@@ -112,9 +115,17 @@ class MainWindow(TK.Frame):
         self.canvas_preview_object = TK.Canvas(master = self.labelframe_objects, background = "#FFFFFF", height = 100, width = 100)
         self.canvas_preview_object.grid(row = 0, column = 1, sticky = TK.E)
 
+        #THRESHOLD
+        self.labelframe_threshold = TK.LabelFrame(master = self.labelframe_source, text = 'Threshold')
+        self.labelframe_threshold.grid(row = 1, column = 2)
+
+        self.scale_threshold = TK.Scale(master = self.labelframe_threshold, from_ = 0, to = 1, orient = TK.HORIZONTAL, resolution = 0.1)
+        self.scale_threshold.grid(row = 0)
+
+
         #START
         self.labelframe_start = TK.LabelFrame(master = self.labelframe_timer, text = 'START')
-        self.labelframe_start.grid(row = 2, column = 4, sticky = TK.E)
+        self.labelframe_start.grid(row = 2, column =5, sticky = TK.E)
 
         self.label_time_status = TK.Label(master = self.labelframe_start, text = '')
         self.label_time_status.grid(row = 0)
@@ -133,6 +144,7 @@ class MainWindow(TK.Frame):
         to = self.options.get('TO')
         from_ = self.options.get('FROM')
         every = self.options.get('EVERY')
+        threshold = self.options.get('THRESHOLD')[0]
         days = ['MON', 'TUE', 'WED', 'THURS', 'FRI', 'SAT', 'SUN']
         [self.repeat_var[d].set(int(self.options.get(days[d])[0])) for d in range(len(days))]
 
@@ -149,6 +161,8 @@ class MainWindow(TK.Frame):
         if preview == '1':
             self.preview_var.set(1)
             self.preview_input()
+
+        self.scale_threshold.set(float(threshold))
 
         self.to_hr_var.set(to[0])
         self.to_min_var.set(to[1])
@@ -184,9 +198,9 @@ class MainWindow(TK.Frame):
                 i = self.get_selected_object()
                 if i != -1:
                     f = self.objects_path + self.listbox_objects.get(i)
-                    self.temp_img = traksource.find_objects_as_image(self.temp_img, [f])
+                    self.temp_img = traksource.find_objects_as_image(self.temp_img, [f], self.scale_threshold.get())
                 else:
-                    self.temp_img = traksource.find_objects_as_image(self.temp_img, [self.objects_path + o for o in self.objects], False) 
+                    self.temp_img = traksource.find_objects_as_image(self.temp_img, [self.objects_path + o for o in self.objects], self.scale_threshold.get(), False) 
 #                
 
                 self.photo_preview = ImageTk.PhotoImage(self.temp_img.resize((self.preview_width, self.preview_height)))
@@ -233,13 +247,14 @@ class MainWindow(TK.Frame):
         self.options.set('TO', [self.to_hr_var.get(), self.to_min_var.get(), self.button_to['text']])
         self.options.set('FROM', [self.from_hr_var.get(), self.from_min_var.get(), self.button_from['text']])
         self.options.set('EVERY', [self.interval_var.get(), self.button_interval['text']])
+        self.options.set('THRESHOLD', [str(self.scale_threshold.get())])
         days = ['MON', 'TUE', 'WED', 'THURS', 'FRI', 'SAT', 'SUN']
         [self.options.set(days[d], [self.repeat_var[d].get()]) for d in range(len(days))]
         self.options.save()
 
     def start(self):
         self.__on_exit() 
-        runner = trak.Trak(self.objects_path)
+        runner = trak.Trak(self.objects_path, self.list_var)
 
 
     def __on_exit(self):

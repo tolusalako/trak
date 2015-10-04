@@ -5,8 +5,9 @@ import time, sys
 from datetime import datetime, timedelta
 
 class Trak():
-    def __init__(self, obj):
+    def __init__(self, obj, list_):
         self.objects_path = obj
+        self.list_var = list_
         self.options = trakdata.TrakOptions()
         source = self.options.get('SOURCE')[0]
         preview = self.options.get('PREVIEW')[0]
@@ -14,6 +15,8 @@ class Trak():
         from_ = self.options.get('FROM')
         every = self.options.get('EVERY')
         days = ['MON', 'TUE', 'WED', 'THURS', 'FRI', 'SAT', 'SUN']
+        threshold = self.options.get('THRESHOLD')
+
         self.repeat_var = [int(self.options.get(days[d])[0]) for d in range(len(days))]
 
         #SET options
@@ -23,7 +26,6 @@ class Trak():
         else:
             self.source = traksource.TrakWindow(self.objects_path)
             self.input_var = 1	
-
 
         self.to_hr_var = to[0]
         self.to_min_var = to[1]
@@ -88,42 +90,50 @@ class Trak():
                 if self.repeat_var[day]:#Current day is checked.
                     columns_as_time = [datetime.strptime(t, "%I:%M %p").
                          replace(year = now.year, month = now.month, day = now.day) for t in self.cols.keys()]
-                    valid_times = filter(lambda x:  x >= now, columns_as_time)
-
-                    if len(valid_times) == 0: #Next valid time isn't till tomorrow:
-                        wait_in_seconds = int(((start.replace(year = now.year, month = now.month, day = now.day) + timedelta(days = 1)) - now).seconds) #Sleep till blackout starts
-                        print wait_in_seconds
-                        continue
-
-                    future_time = min(valid_times)
-                    if now == future_time:
-                        x = self.cols.get(now.strftime("%I:%M %p"), None)
-                        if x == 1 or first_run: #New Day or first_run
-                            self.data.write(y, 0, time.strftime("%m-%d-%Y")) #Write the current date on all lines
-                            first_run = False
-                        self.write_data(x, y)
+                    valid_times = filter(lambda x:  (x >= now.replace(second = x.second)), columns_as_time) 
+                    
+                    if len(valid_times) == 0:
                         wait_in_seconds = int(delta.seconds)
                     else:
-                        wait_in_seconds = int((future_time - now).seconds)
+                        future_time = min(valid_times)
+                        if (now.hour == future_time.hour and now.minute == future_time.minute):
+                            x = self.cols.get(now.strftime("%I:%M %p"), None)
+                            if x == 1 or first_run: #New Day or first_run
+                                self.data.write(y, 0, time.strftime("%m-%d-%Y")) #Write the current date on all lines
+                                first_run = False
+                            self.write_data(x, y)
+                            wait_in_seconds = int(delta.seconds)
+                        else:
+                            print now
+                            print "Didnt Write"
+                            wait_in_seconds = int((future_time - now).seconds)
                 else: 
-                    day = day + 1 if day < 6 else 0
-                    if self.repeat_var[day].get():  
-                        wait_in_seconds = int(((start.replace(year = now.year, month = now.month, day = now.day) + timedelta(days = 1)) - now).seconds) #Sleep till blackout starts
-                    else:
-                        wait_in_seconds = 24 * 60 * 60
+                    wait_in_seconds = int(((start.replace(year = now.year, month = now.month, day = now.day) + timedelta(days = 1)) - now).seconds) #Sleep till blackout starts
+                    
             if wait_in_seconds > 60:
                 print 'Next in %s seconds.' % (wait_in_seconds) 
 	    sys.stdout.flush()
 
     def write_data(self, x, y):
-        self.data.write(y, x, 'Test')
-    	self.data.save()
-#        if self.list_var.get() != "":
-#            self.temp_img = self.source.capture(self.list_var.get())
-#            if self.temp_img != None:
-#                found_objects = traksource.find_objects_as_objects(self.temp_img, [self.objects_path + o for o in self.objects]) 
-#                for obj in found_objects:
-#                    self.data.write(y, x, obj.location, obj = obj.name)
+        print 'Writing data...'
+        self.data.write(y, x, datetime.now().strftime("%I:%M %p"))
+        self.data.save()
+
+       # if self.list_var.get() != "":
+       #     self.temp_img = self.source.capture(self.list_var.get())
+       #     if self.temp_img != None:
+       #         found_objects = traksource.find_objects_as_objects(self.temp_img, [self.objects_path + o for o in self.objects]) 
+       #         for obj in found_objects:
+       #             self.data.write(y, x, obj.location, obj = obj.name)
+
+        # if self.list_var.get() != "":
+        #    self.temp_img = self.source.capture(self.list_var.get())
+        #    if self.temp_img != None:
+        #        found_objects = traksource.find_objects_as_objects(self.temp_img, [self.objects_path + o for o in self.objects]) 
+        #        for obj in found_objects:
+        #            self.data.write(y, x, obj.location)
+        #            break
+        # self.data.save()
 
     def print_settings(self):
         print 'Trak started. \nLogging every %s %s.' % (self.interval_var, self.interval_am_pm)
@@ -131,5 +141,5 @@ class Trak():
 
     def wait(self, t):
         if t > 60:
-            time.sleep(abs(t - 5))
+            time.sleep(abs(t - 1))
 

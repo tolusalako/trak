@@ -7,7 +7,7 @@ from scipy import where, asarray
 from trakObject import Object
 
 
-def find_objects_as_objects(img, objects, all_ = True): #Multiple objects fix		
+def find_objects_as_objects(img, objects, threshold = .6, all_ = True): #Multiple objects fix		
 	img_rgb = asarray(img)
 	img_gray = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2GRAY)
 
@@ -21,8 +21,6 @@ def find_objects_as_objects(img, objects, all_ = True): #Multiple objects fix
 		w, h = template.shape[::-1]
 
 		res = cv2.matchTemplate(img_gray,template,cv2.TM_CCOEFF_NORMED)
-
-		threshold = .6
 		loc = where( res >= threshold)
 		for pt in zip(*loc[::-1]):
 			name = obj.split('/')[-1]
@@ -32,7 +30,7 @@ def find_objects_as_objects(img, objects, all_ = True): #Multiple objects fix
 			break
 	return found_objects
 
-def find_objects_as_image(img, objects, all_ = True):
+def find_objects_as_image(img, objects, threshold = .6, all_ = True):
 	img_rgb = asarray(img)
 	img_gray = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2GRAY)
 	img_copy = img_rgb.copy()
@@ -44,7 +42,6 @@ def find_objects_as_image(img, objects, all_ = True):
 		w, h = template.shape[::-1]
 
 		res = cv2.matchTemplate(img_gray,template,cv2.TM_CCOEFF_NORMED)
-		threshold = .6
 		loc = where( res >= threshold)
 		for pt in zip(*loc[::-1]): #pt is the topleft corner
 		 	cv2.rectangle(img_copy, pt, (pt[0] + w, pt[1] + h), (0,0,255), 2)
