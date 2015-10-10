@@ -8,6 +8,7 @@ class Trak():
     def __init__(self, obj, list_):
         self.objects_path = obj
         self.list_var = list_
+        self.time_threshold = 10
         self.options = trakdata.TrakOptions()
         source = self.options.get('SOURCE')[0]
         preview = self.options.get('PREVIEW')[0]
@@ -84,14 +85,14 @@ class Trak():
             if start < now < end: #Blackout hours. No activity
                 print 'Blackout Hours starting now...'
                 wait_in_seconds = int((end - now).seconds)
-                y += 1
+                if wait_in_seconds > self.time_threshold:
+                    y += 1
             else:
                 day = datetime.today().weekday()
                 if self.repeat_var[day]:#Current day is checked.
                     columns_as_time = [datetime.strptime(t, "%I:%M %p").
-                         replace(year = now.year, month = now.month, day = now.day) for t in self.cols.keys()]
-                    valid_times = filter(lambda x:  (x >= now.replace(second = x.second)), columns_as_time) 
-                    
+                         replace(year = now.year, month = now.month, day = now.day, second = now.second, microsecond = now.microsecond) for t in self.cols.keys()]
+                    valid_times = filter(lambda x: x >= now, columns_as_time) 
                     if len(valid_times) == 0:
                         wait_in_seconds = int(delta.seconds)
                     else:
@@ -104,18 +105,17 @@ class Trak():
                             self.write_data(x, y)
                             wait_in_seconds = int(delta.seconds)
                         else:
-                            print now
-                            print "Didnt Write"
                             wait_in_seconds = int((future_time - now).seconds)
                 else: 
                     wait_in_seconds = int(((start.replace(year = now.year, month = now.month, day = now.day) + timedelta(days = 1)) - now).seconds) #Sleep till blackout starts
                     
-            if wait_in_seconds > 60:
+            if wait_in_seconds > self.time_threshold:
                 print 'Next in %s seconds.' % (wait_in_seconds) 
 	    sys.stdout.flush()
 
     def write_data(self, x, y):
         print 'Writing data...'
+        print datetime.now().strftime("%I:%M %p"), x, y
         self.data.write(y, x, datetime.now().strftime("%I:%M %p"))
         self.data.save()
 
@@ -140,6 +140,6 @@ class Trak():
         print 'Blackout Hours: %s:%s %s to %s:%s %s.' % (self.from_hr_var, self.from_min_var, self.from_am_pm, self.to_hr_var, self.to_min_var, self.to_am_pm)
 
     def wait(self, t):
-        if t > 60:
+        if t > self.time_threshold:
             time.sleep(abs(t - 1))
 
