@@ -1,4 +1,4 @@
-#GUI
+#Toluwanimi Salako  (www.salakotech.com) 
 import Tkinter as TK
 from PIL import ImageTk, Image
 from os import listdir

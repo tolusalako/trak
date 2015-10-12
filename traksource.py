@@ -1,8 +1,7 @@
-import win32gui, win32ui, win32con, win32api, win32console
+#Toluwanimi Salako  (www.salakotech.com) 
+import win32gui, win32ui, win32con
 import cv2
-import time, sys
 from PIL import Image
-from os import listdir
 from scipy import where, asarray
 from trakObject import Object
 

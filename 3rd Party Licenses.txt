@@ -1,0 +1,5 @@
+OPENCV:
+http://opencv.org/license.html
+
+SCIPY:
+http://www.scipy.org/scipylib/license.html

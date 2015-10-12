@@ -1,5 +1,4 @@
-from PIL import ImageTk, Image
-from os import listdir
+#Toluwanimi Salako  (www.salakotech.com) 
 import traksource, trakdata
 import time, sys
 from datetime import datetime, timedelta
