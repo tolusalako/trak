@@ -3,6 +3,7 @@ import Tkinter as TK
 from PIL import ImageTk, Image
 from os import listdir
 import traksource, trakdata, trak
+from datetime import datetime
 
 class MainWindow(TK.Frame):
     STICKY_ALL = TK.N + TK.S + TK.W + TK.E
@@ -40,7 +41,8 @@ class MainWindow(TK.Frame):
 
         self.canvas_preview = TK.Canvas(master = self.labelframe_preview, background = "#FFFFFF", height = self.preview_height, width = self.preview_width)
         self.canvas_preview.grid(row = 0, columnspan = 3, sticky = TK.W)
-
+        self.canvas_preview.bind("<ButtonRelease-1>", lambda event: self.popout_preview(event))
+        self.canvas_preview.bind("<ButtonRelease-3>", lambda event: self.save_preview(event))
 
         self.frame_righthalf = TK.Frame(master = self)
         self.frame_righthalf.grid(row = 0, column = 1, sticky = TK.E)
@@ -109,7 +111,7 @@ class MainWindow(TK.Frame):
 
         self.listbox_objects = TK.Listbox(master = self.labelframe_objects, selectmode = TK.SINGLE)
         self.listbox_objects.grid(row = 0)
-        self.listbox_objects.bind('<Enter>', self.update_object_list)
+        #self.listbox_objects.bind('<Enter>', self.update_object_list)
         self.listbox_objects.bind('<ButtonRelease-1>', self.preview_object)
 
         self.canvas_preview_object = TK.Canvas(master = self.labelframe_objects, background = "#FFFFFF", height = 100, width = 100)
@@ -187,8 +189,17 @@ class MainWindow(TK.Frame):
         event.widget['text'] = 'MIN' if event.widget['text'] == 'HR' else 'HR'	
 
     def preview_input(self):
-        if self.preview_var.get():
-            if self.list_var.get() != "":
+        self.update_object_list(None)
+        if not self.preview_var.get():
+            self.canvas_preview.delete("all")
+            return
+        elif self.list_var.get() == "":
+            self.preview_var.set(0)
+            self.canvas_preview.delete("all")
+            return
+        else:
+            if len(self.source.source_list) > 0:
+               
                 self.temp_img = self.source.capture(self.list_var.get()) #Capture Image from source
                 if self.temp_img == None: #Make sure Image IS captured
                     self.preview_var.set(0)
@@ -200,15 +211,16 @@ class MainWindow(TK.Frame):
                     f = self.objects_path + self.listbox_objects.get(i)
                     self.temp_img = traksource.find_objects_as_image(self.temp_img, [f], self.scale_threshold.get())
                 else:
-                    self.temp_img = traksource.find_objects_as_image(self.temp_img, [self.objects_path + o for o in self.objects], self.scale_threshold.get(), False) 
-#                
-
-                self.photo_preview = ImageTk.PhotoImage(self.temp_img.resize((self.preview_width, self.preview_height)))
-                self.canvas_preview.create_image((0, 0), image = self.photo_preview, anchor = TK.N +TK.W)
+                    self.temp_img = traksource.find_objects_as_image(self.temp_img, [self.objects_path + o for o in self.objects], self.scale_threshold.get(), all_ = False)    
+                self.photo_preview = self.temp_img.copy()
+                self.photo_preview_resized = ImageTk.PhotoImage(self.temp_img.resize((self.preview_width, self.preview_height)))
+                self.canvas_preview.create_image((0, 0), image = self.photo_preview_resized, anchor = TK.N +TK.W)
                 self.after(8, self.preview_input)
             else:
+                self.preview_var.set(0)
                 self.source.release()
-                #self.canvas_preview.delete("all")
+
+            #self.canvas_preview.delete("all")
 
     def get_selected_object(self):
         if len(self.listbox_objects.curselection()) == 0:
@@ -223,6 +235,14 @@ class MainWindow(TK.Frame):
             temp_obj = Image.open(f)
             self.obj_preview = ImageTk.PhotoImage(temp_obj.resize((100, 100)))
             self.canvas_preview_object.create_image((0,0), image = self.obj_preview, anchor = TK.N +TK.W)
+
+    def save_preview(self, event):
+        if self.preview_var.get():
+            self.photo_preview.save('saves/' + datetime.now().strftime("%Y-%m-%d_%I-%M-%S") + '.jpg')
+
+    def popout_preview(self, event):
+        if self.preview_var.get():
+            self.photo_preview.show()
 
     def switch_input(self):
         self.preview_var.set(0)

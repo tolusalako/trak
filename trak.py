@@ -59,11 +59,12 @@ class Trak():
         else:
             delta = timedelta(minutes = int(interval))
 
+        #Populate excel with column titles
         d = end
         e = start + timedelta(days = 1)
         self.cols = {}
         i = 1
-        while d < e:
+        while d <= e:
             t = d.strftime("%I:%M %p")
             self.cols[t] = i
             self.data.write(0, i, t) #Column Names
@@ -72,8 +73,10 @@ class Trak():
         self.data.save()
         x, y = 1,1
 
+        #Action loop
         wait_in_seconds = 0
-        first_run = True
+        new_day = True
+        last_day = datetime.today().weekday()
         while True:
             self.wait(wait_in_seconds)
             now = datetime.now()
@@ -82,36 +85,35 @@ class Trak():
             if end < start:
                 end += timedelta(days = 1)
 
-            if start < now < end: #Blackout hours. No activity
-                print 'Blackout Hours starting now...'
-                wait_in_seconds = int((end - now).seconds)
-                if wait_in_seconds > self.time_threshold:
+            day = datetime.today().weekday()
+
+            if self.repeat_var[day]:#Current day is checked.
+                if last_day < day:
                     y += 1
-            else:
-                day = datetime.today().weekday()
-                if self.repeat_var[day]:#Current day is checked.
-                    columns_as_time = [datetime.strptime(t, "%I:%M %p").
-                         replace(year = now.year, month = now.month, day = now.day, second = now.second, microsecond = now.microsecond) for t in self.cols.keys()]
-                    valid_times = filter(lambda x: x >= now, columns_as_time) 
-                    if len(valid_times) == 0:
+                    new_day = True
+                columns_as_time = [datetime.strptime(t, "%I:%M %p").
+                     replace(year = now.year, month = now.month, day = now.day, second = now.second, microsecond = now.microsecond) for t in self.cols.keys()]
+                valid_times = filter(lambda x: x >= now, columns_as_time) 
+                if len(valid_times) == 0:
+                    wait_in_seconds = int((end - now).seconds) #Sleep till blackout ends
+                else:
+                    future_time = min(valid_times)
+                    if (now.hour == future_time.hour and now.minute == future_time.minute):
+                        x = self.cols.get(now.strftime("%I:%M %p"), None)
+                        if new_day: #New Day
+                            self.data.write(y, 0, time.strftime("%m-%d-%Y")) #Write the current date on all lines
+                            new_day = False
+                        self.write_data(x, y)
                         wait_in_seconds = int(delta.seconds)
                     else:
-                        future_time = min(valid_times)
-                        if (now.hour == future_time.hour and now.minute == future_time.minute):
-                            x = self.cols.get(now.strftime("%I:%M %p"), None)
-                            if x == 1 or first_run: #New Day or first_run
-                                self.data.write(y, 0, time.strftime("%m-%d-%Y")) #Write the current date on all lines
-                                first_run = False
-                            self.write_data(x, y)
-                            wait_in_seconds = int(delta.seconds)
-                        else:
-                            wait_in_seconds = int((future_time - now).seconds)
-                else: 
-                    wait_in_seconds = int(((start.replace(year = now.year, month = now.month, day = now.day) + timedelta(days = 1)) - now).seconds) #Sleep till blackout starts
-                    
+                        wait_in_seconds = int((future_time - now).seconds)
+            else: 
+                wait_in_seconds = int((end - now).seconds) #Sleep till blackout ends
+                
+            last_day = day
             if wait_in_seconds > self.time_threshold:
-                print 'Next in %s seconds.' % (wait_in_seconds) 
-	    sys.stdout.flush()
+                print 'Next in %s seconds.' % (wait_in_seconds)
+            sys.stdout.flush()
 
     def write_data(self, x, y):
         print 'Writing data...'

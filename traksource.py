@@ -46,6 +46,7 @@ def find_objects_as_image(img, objects, threshold = .6, all_ = True):
 		for pt in zip(*loc[::-1]): #pt is the topleft corner
 		 	cv2.rectangle(img_copy, pt, (pt[0] + w, pt[1] + h), (0,0,255), 2)
 		 	count += 1
+		 	break
 	 	if not all_ and count > 0:
 	 		break
 	return Image.fromarray(img_copy)
@@ -110,6 +111,10 @@ class TrakCam():
 	def setupCam(self):
 		if self.source_count > 0:
 			self.camera = cv2.VideoCapture(0)
+			# self.camera.set(3,1280)
+			# self.camera.set(4,1024)
+			self.camera.set(3,720)
+			self.camera.set(4,480)
 			self._released = False
 		else:
 			self.camera = None
