@@ -1,7 +1,7 @@
 #Toluwanimi Salako  (www.salakotech.com) 
 import Tkinter as TK
 from PIL import ImageTk, Image
-from os import listdir
+from os import listdir, path, makedirs
 import traksource, trakdata, trak
 from datetime import datetime
 
@@ -288,6 +288,11 @@ class MainWindow(TK.Frame):
 
 
 if __name__ == '__main__':
+    if not path.isdir('objects/'):
+        makedirs('objects/')
+    if not path.isdir('saves/'):
+        makedirs('saves/')
+        
 	main = MainWindow('objects/')
 	main.show()
 	
