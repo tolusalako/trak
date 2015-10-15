@@ -2,11 +2,13 @@
 import traksource, trakdata
 import time, sys
 from datetime import datetime, timedelta
+from os import listdir
 
 class Trak():
-    def __init__(self, obj, list_):
-        self.objects_path = obj
-        self.list_var = list_
+    def __init__(self, obj_path, source_input):
+        self.objects_path = obj_path
+        self.input = source_input
+        self.objects = [f for f in listdir(self.objects_path)]
         self.time_threshold = 10
         self.options = trakdata.TrakOptions()
         source = self.options.get('SOURCE')[0]
@@ -85,7 +87,6 @@ class Trak():
                 end += timedelta(days = 1)
 
             day = datetime.today().weekday()
-
             if self.repeat_var[day]:#Current day is checked.
                 if last_day < day:
                     y += 1
@@ -107,7 +108,8 @@ class Trak():
                     else:
                         wait_in_seconds = int((future_time - now).seconds)
             else: 
-                wait_in_seconds = int((end - now).seconds) #Sleep till blackout ends
+                midnight = now.replace(day = now.day + 1, hour = 0, minute = 0)
+                wait_in_seconds = int((midnight - now).seconds) #Sleep till next day
                 
             last_day = day
             if wait_in_seconds > self.time_threshold:
@@ -117,24 +119,15 @@ class Trak():
     def write_data(self, x, y):
         print 'Writing data...'
         print datetime.now().strftime("%I:%M %p"), x, y
-        self.data.write(y, x, datetime.now().strftime("%I:%M %p"))
+
+        if self.input != "":
+           self.temp_img = self.source.capture(self.input)
+           if self.temp_img != None:
+               found_objects = traksource.find_objects_as_objects(self.temp_img, [self.objects_path + o for o in self.objects], all_ = False) 
+               for obj in found_objects:
+                   self.data.write(y, x, obj.location)
+                   break
         self.data.save()
-
-       # if self.list_var.get() != "":
-       #     self.temp_img = self.source.capture(self.list_var.get())
-       #     if self.temp_img != None:
-       #         found_objects = traksource.find_objects_as_objects(self.temp_img, [self.objects_path + o for o in self.objects]) 
-       #         for obj in found_objects:
-       #             self.data.write(y, x, obj.location, obj = obj.name)
-
-        # if self.list_var.get() != "":
-        #    self.temp_img = self.source.capture(self.list_var.get())
-        #    if self.temp_img != None:
-        #        found_objects = traksource.find_objects_as_objects(self.temp_img, [self.objects_path + o for o in self.objects]) 
-        #        for obj in found_objects:
-        #            self.data.write(y, x, obj.location)
-        #            break
-        # self.data.save()
 
     def print_settings(self):
         print 'Trak started. \nLogging every %s %s.' % (self.interval_var, self.interval_am_pm)

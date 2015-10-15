@@ -111,7 +111,7 @@ class MainWindow(TK.Frame):
 
         self.listbox_objects = TK.Listbox(master = self.labelframe_objects, selectmode = TK.SINGLE)
         self.listbox_objects.grid(row = 0)
-        #self.listbox_objects.bind('<Enter>', self.update_object_list)
+        self.listbox_objects.bind('<Enter>', self.update_object_list)
         self.listbox_objects.bind('<ButtonRelease-1>', self.preview_object)
 
         self.canvas_preview_object = TK.Canvas(master = self.labelframe_objects, background = "#FFFFFF", height = 100, width = 100)
@@ -189,7 +189,6 @@ class MainWindow(TK.Frame):
         event.widget['text'] = 'MIN' if event.widget['text'] == 'HR' else 'HR'	
 
     def preview_input(self):
-        self.update_object_list(None)
         if not self.preview_var.get():
             self.canvas_preview.delete("all")
             return
@@ -273,8 +272,17 @@ class MainWindow(TK.Frame):
         self.options.save()
 
     def start(self):
-        self.__on_exit() 
-        runner = trak.Trak(self.objects_path, self.list_var)
+        input_ = self.list_var.get()
+        default_input = self.source.source_list[0] if self.source.source_count > 0 else None
+
+        if input_ != "":
+            self.__on_exit() 
+            runner = trak.Trak(self.objects_path, input_)
+        elif default is not None:
+            self.__on_exit() 
+            runner = trak.Trak(self.objects_path, default_input)
+        else:
+            return  
 
 
     def __on_exit(self):
@@ -292,8 +300,7 @@ if __name__ == '__main__':
         makedirs('objects/')
     if not path.isdir('saves/'):
         makedirs('saves/')
-        
-	main = MainWindow('objects/')
-	main.show()
-	
+    main = MainWindow('objects/')
+    main.show()
+
 	

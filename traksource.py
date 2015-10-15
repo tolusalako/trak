@@ -3,8 +3,8 @@ import win32gui, win32ui, win32con
 import cv2
 from PIL import Image
 from scipy import where, asarray
-from trakObject import Object
-
+from trakobject import Object
+from trakdata import TrakOptions
 
 def find_objects_as_objects(img, objects, threshold = .6, all_ = True): #Multiple objects fix		
 	img_rgb = asarray(img)
@@ -30,6 +30,8 @@ def find_objects_as_objects(img, objects, threshold = .6, all_ = True): #Multipl
 	return found_objects
 
 def find_objects_as_image(img, objects, threshold = .6, all_ = True):
+	data = TrakOptions(file = r'data\debug.txt')
+
 	img_rgb = asarray(img)
 	img_gray = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2GRAY)
 	img_copy = img_rgb.copy()
@@ -44,6 +46,15 @@ def find_objects_as_image(img, objects, threshold = .6, all_ = True):
 		loc = where( res >= threshold)
 		for pt in zip(*loc[::-1]): #pt is the topleft corner
 		 	cv2.rectangle(img_copy, pt, (pt[0] + w, pt[1] + h), (0,0,255), 2)
+
+		 	n = data.get(obj)[0]
+		 	if n is None:
+		 		data.set(obj, [1])
+		 	else:
+		 		data.set(obj, [int(n) + 1])
+		 	data.save()
+
+
 		 	count += 1
 		 	break
 	 	if not all_ and count > 0:
